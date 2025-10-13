@@ -554,6 +554,19 @@ document.addEventListener('DOMContentLoaded', function() {
   });
 });
 
+// Global function for microphone test button
+function toggleMicTest() {
+  if (!micTest) {
+    micTest = new MicrophoneTest();
+  }
+  
+  if (micTest.isRecording) {
+    micTest.stopMicTest();
+  } else {
+    micTest.startMicTest();
+  }
+}
+
 // Add scroll effect to navbar
 window.addEventListener('scroll', function() {
   const navbar = document.querySelector('.navbar');
@@ -564,6 +577,185 @@ window.addEventListener('scroll', function() {
   }
 });
 
+// Microphone Test Functionality
+class MicrophoneTest {
+  constructor() {
+    this.isRecording = false;
+    this.mediaRecorder = null;
+    this.audioContext = null;
+    this.analyser = null;
+    this.microphone = null;
+    this.dataArray = null;
+    this.animationId = null;
+  }
+
+  async startMicTest() {
+    try {
+      // Request microphone permission
+      const stream = await navigator.mediaDevices.getUserMedia({ 
+        audio: {
+          echoCancellation: true,
+          noiseSuppression: true,
+          sampleRate: 44100
+        } 
+      });
+
+      // Create audio context for visualization
+      this.audioContext = new (window.AudioContext || window.webkitAudioContext)();
+      this.analyser = this.audioContext.createAnalyser();
+      this.microphone = this.audioContext.createMediaStreamSource(stream);
+      
+      this.analyser.fftSize = 256;
+      const bufferLength = this.analyser.frequencyBinCount;
+      this.dataArray = new Uint8Array(bufferLength);
+      
+      this.microphone.connect(this.analyser);
+      
+      this.isRecording = true;
+      this.updateMicTestUI();
+      this.visualizeMicrophone();
+      
+      console.log('Microphone test started successfully');
+      
+    } catch (error) {
+      console.error('Error accessing microphone:', error);
+      this.showMicError(error.message);
+    }
+  }
+
+  stopMicTest() {
+    this.isRecording = false;
+    
+    if (this.animationId) {
+      cancelAnimationFrame(this.animationId);
+    }
+    
+    if (this.audioContext) {
+      this.audioContext.close();
+    }
+    
+    // Stop all tracks
+    if (this.microphone && this.microphone.mediaStream) {
+      this.microphone.mediaStream.getTracks().forEach(track => track.stop());
+    }
+    
+    this.updateMicTestUI();
+    this.resetVisualization();
+    
+    console.log('Microphone test stopped');
+  }
+
+  visualizeMicrophone() {
+    if (!this.isRecording) return;
+    
+    this.analyser.getByteFrequencyData(this.dataArray);
+    
+    // Calculate average volume
+    let sum = 0;
+    for (let i = 0; i < this.dataArray.length; i++) {
+      sum += this.dataArray[i];
+    }
+    const average = sum / this.dataArray.length;
+    
+    // Update wave bars based on audio input
+    const waveBars = document.querySelectorAll('.mic-test-wave .wave-bar');
+    waveBars.forEach((bar, index) => {
+      const intensity = this.dataArray[index * 4] || 0;
+      const height = Math.max(20, (intensity / 255) * 80);
+      bar.style.height = `${height}px`;
+      bar.style.opacity = Math.max(0.3, intensity / 255);
+    });
+    
+    // Update volume indicator
+    const volumeIndicator = document.querySelector('.volume-level');
+    if (volumeIndicator) {
+      const volumePercent = (average / 255) * 100;
+      volumeIndicator.style.width = `${volumePercent}%`;
+      
+      // Change color based on volume
+      if (volumePercent > 50) {
+        volumeIndicator.style.background = '#10b981'; // Green for good volume
+      } else if (volumePercent > 20) {
+        volumeIndicator.style.background = '#f59e0b'; // Yellow for medium volume
+      } else {
+        volumeIndicator.style.background = '#ef4444'; // Red for low volume
+      }
+    }
+    
+    // Update status text
+    const statusText = document.querySelector('.mic-status-text');
+    if (statusText) {
+      if (average > 30) {
+        statusText.textContent = '🎤 Microphone working perfectly!';
+        statusText.style.color = '#10b981';
+      } else if (average > 10) {
+        statusText.textContent = '🔊 Speak louder for better detection';
+        statusText.style.color = '#f59e0b';
+      } else {
+        statusText.textContent = '🔇 No audio detected - check your mic';
+        statusText.style.color = '#ef4444';
+      }
+    }
+    
+    this.animationId = requestAnimationFrame(() => this.visualizeMicrophone());
+  }
+
+  updateMicTestUI() {
+    const testButton = document.querySelector('.mic-test-button');
+    const statusIndicator = document.querySelector('.mic-status-indicator');
+    
+    if (testButton) {
+      if (this.isRecording) {
+        testButton.innerHTML = '<i class="fas fa-stop"></i> Stop Mic Test';
+        testButton.classList.add('recording');
+      } else {
+        testButton.innerHTML = '<i class="fas fa-microphone"></i> Test Your Microphone';
+        testButton.classList.remove('recording');
+      }
+    }
+    
+    if (statusIndicator) {
+      statusIndicator.classList.toggle('active', this.isRecording);
+    }
+  }
+
+  resetVisualization() {
+    const waveBars = document.querySelectorAll('.mic-test-wave .wave-bar');
+    waveBars.forEach(bar => {
+      bar.style.height = '20px';
+      bar.style.opacity = '0.3';
+    });
+    
+    const volumeIndicator = document.querySelector('.volume-level');
+    if (volumeIndicator) {
+      volumeIndicator.style.width = '0%';
+    }
+    
+    const statusText = document.querySelector('.mic-status-text');
+    if (statusText) {
+      statusText.textContent = 'Click "Test Your Microphone" to begin';
+      statusText.style.color = '#64748b';
+    }
+  }
+
+  showMicError(errorMessage) {
+    const statusText = document.querySelector('.mic-status-text');
+    if (statusText) {
+      if (errorMessage.includes('Permission denied')) {
+        statusText.textContent = '❌ Microphone access denied. Please allow microphone permission.';
+      } else if (errorMessage.includes('NotFound')) {
+        statusText.textContent = '❌ No microphone found. Please connect a microphone.';
+      } else {
+        statusText.textContent = '❌ Microphone error. Please check your device settings.';
+      }
+      statusText.style.color = '#ef4444';
+    }
+  }
+}
+
+// Initialize microphone test
+let micTest = null;
+
 // Add animation to voice wave
 function animateVoiceWave() {
   const waveBars = document.querySelectorAll('.wave-bar');
@@ -573,4 +765,6 @@ function animateVoiceWave() {
 }
 
 // Initialize animations when page loads
-document.addEventListener('DOMContentLoaded', animateVoiceWave);
+  
+  // Initialize microphone test
+  micTest = new MicrophoneTest();

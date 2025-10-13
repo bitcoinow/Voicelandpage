@@ -1010,4 +1010,30 @@ body {
   .contact-form {
     padding: 30px 20px;
   }
+  
+  .mic-test-section {
+    padding: 30px 20px;
+    margin-bottom: 40px;
+  }
+  
+  .mic-test-container h3 {
+    font-size: 1.5rem;
+  }
+  
+  .mic-test-visual {
+    padding: 20px;
+  }
+  
+  .mic-test-wave {
+    height: 80px;
+    gap: 4px;
+  }
+  
+  .mic-test-wave .wave-bar {
+    width: 6px;
+  }
+  
+  .mic-instructions {
+    font-size: 0.8rem;
+  }
 }
