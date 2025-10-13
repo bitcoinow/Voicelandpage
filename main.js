@@ -344,6 +344,73 @@ document.querySelector('#app').innerHTML = `
       </div>
     </section>
 
+    <!-- Contact Section -->
+    <section id="contact" class="contact">
+      <div class="container">
+        <div class="section-header">
+          <h2>Get in Touch</h2>
+          <p>Have questions? We'd love to hear from you. Send us a message and we'll respond as soon as possible.</p>
+        </div>
+        <div class="contact-content">
+          <div class="contact-info">
+            <div class="contact-item">
+              <div class="contact-icon">
+                <i class="fas fa-envelope"></i>
+              </div>
+              <div>
+                <h4>Email Us</h4>
+                <p>support@voicenotementor.com</p>
+              </div>
+            </div>
+            <div class="contact-item">
+              <div class="contact-icon">
+                <i class="fas fa-phone"></i>
+              </div>
+              <div>
+                <h4>Call Us</h4>
+                <p>+1 (555) 123-4567</p>
+              </div>
+            </div>
+            <div class="contact-item">
+              <div class="contact-icon">
+                <i class="fas fa-clock"></i>
+              </div>
+              <div>
+                <h4>Support Hours</h4>
+                <p>Mon-Fri: 9AM-6PM EST</p>
+              </div>
+            </div>
+          </div>
+          <div class="contact-form">
+            <form id="contactForm">
+              <div class="form-group">
+                <input type="text" id="name" name="name" placeholder="Your Name" required>
+              </div>
+              <div class="form-group">
+                <input type="email" id="email" name="email" placeholder="Your Email" required>
+              </div>
+              <div class="form-group">
+                <select id="subject" name="subject" required>
+                  <option value="">Select Subject</option>
+                  <option value="general">General Inquiry</option>
+                  <option value="support">Technical Support</option>
+                  <option value="billing">Billing Question</option>
+                  <option value="feature">Feature Request</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <textarea id="message" name="message" placeholder="Your Message" rows="5" required></textarea>
+              </div>
+              <button type="submit" class="primary-button">
+                <i class="fas fa-paper-plane"></i>
+                Send Message
+              </button>
+            </form>
+          </div>
+        </div>
+      </div>
+    </section>
+
     <!-- CTA Section -->
     <section class="cta">
       <div class="container">
@@ -384,7 +451,7 @@ document.querySelector('#app').innerHTML = `
             </div>
             <div class="footer-column">
               <h4>Support</h4>
-              <a href="#contact">Contact</a>
+              <a href="#contact" onclick="scrollToSection('contact')">Contact</a>
               <a href="#">Help Center</a>
               <a href="#">API Docs</a>
             </div>
@@ -415,8 +482,41 @@ function scrollToSection(sectionId) {
 // Make function globally available
 window.scrollToSection = scrollToSection;
 
+// Add form submission handler
+function handleContactForm() {
+  const form = document.getElementById('contactForm');
+  if (form) {
+    form.addEventListener('submit', function(e) {
+      e.preventDefault();
+      
+      // Get form data
+      const formData = new FormData(form);
+      const data = Object.fromEntries(formData);
+      
+      // Show success message
+      const button = form.querySelector('button[type="submit"]');
+      const originalText = button.innerHTML;
+      
+      button.innerHTML = '<i class="fas fa-check"></i> Message Sent!';
+      button.style.background = '#10b981';
+      
+      // Reset form after 2 seconds
+      setTimeout(() => {
+        form.reset();
+        button.innerHTML = originalText;
+        button.style.background = '';
+      }, 2000);
+      
+      // In a real app, you would send this data to your backend
+      console.log('Contact form submitted:', data);
+    });
+  }
+}
 // Add mobile menu toggle functionality
 document.addEventListener('DOMContentLoaded', function() {
+  // Initialize contact form
+  handleContactForm();
+  
   const mobileToggle = document.querySelector('.mobile-menu-toggle');
   const navLinks = document.querySelector('.nav-links');
   
@@ -425,6 +525,33 @@ document.addEventListener('DOMContentLoaded', function() {
       navLinks.classList.toggle('active');
     });
   }
+  
+  // Add click handlers for all navigation links
+  const navLinksElements = document.querySelectorAll('.nav-links a[href^="#"]');
+  navLinksElements.forEach(link => {
+    link.addEventListener('click', function(e) {
+      e.preventDefault();
+      const targetId = this.getAttribute('href').substring(1);
+      scrollToSection(targetId);
+      
+      // Close mobile menu if open
+      if (navLinks.classList.contains('active')) {
+        navLinks.classList.remove('active');
+      }
+    });
+  });
+  
+  // Test all external links
+  const externalLinks = document.querySelectorAll('a[href^="https://startling-daffodil-714b24.netlify.app/"]');
+  console.log(`Found ${externalLinks.length} external links to VoiceNote Mentor app`);
+  
+  // Add click tracking for external links
+  externalLinks.forEach(link => {
+    link.addEventListener('click', function() {
+      console.log('External link clicked:', this.href);
+      // You can add analytics tracking here
+    });
+  });
 });
 
 // Add scroll effect to navbar
