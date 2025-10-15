@@ -1,4 +1,8 @@
 import './style.css'
+import { authManager } from './auth.js'
+import { AuthModal } from './authModal.js'
+
+let authModal = null
 
 // Create the main app structure
 document.querySelector('#app').innerHTML = `
@@ -10,11 +14,10 @@ document.querySelector('#app').innerHTML = `
           <i class="fas fa-microphone-alt"></i>
           <span>VoiceNote Mentor</span>
         </div>
-        <div class="nav-links">
+        <div class="nav-links" id="navLinks">
           <a href="#features">Features</a>
           <a href="#pricing">Pricing</a>
           <a href="#contact">Contact</a>
-          <a href="https://startling-daffodil-714b24.netlify.app/" class="cta-button" target="_blank">Try Demo Now</a>
         </div>
         <div class="mobile-menu-toggle">
           <i class="fas fa-bars"></i>
@@ -33,10 +36,10 @@ document.querySelector('#app').innerHTML = `
             The AI-powered voice note app that captures, organizes, and transforms your thoughts into actionable insights. 10x faster than traditional note-taking.
           </p>
           <div class="hero-buttons">
-            <a href="https://startling-daffodil-714b24.netlify.app/" class="primary-button" target="_blank">
+            <button class="primary-button" id="heroDemoBtn">
               <i class="fas fa-play"></i>
               Try Demo Now
-            </a>
+            </button>
             <button class="secondary-button" onclick="scrollToSection('features')">
               <i class="fas fa-info-circle"></i>
               Learn More
@@ -160,10 +163,10 @@ document.querySelector('#app').innerHTML = `
                 <span>Smart categorization</span>
               </div>
             </div>
-            <a href="https://startling-daffodil-714b24.netlify.app/" class="primary-button" target="_blank">
+            <button class="primary-button demo-cta-btn">
               <i class="fas fa-external-link-alt"></i>
               Try Live Demo
-            </a>
+            </button>
           </div>
           <div class="demo-visual">
             <div class="phone-mockup">
@@ -299,7 +302,7 @@ document.querySelector('#app').innerHTML = `
               <li><i class="fas fa-check"></i> 5 languages</li>
               <li><i class="fas fa-check"></i> Export to text</li>
             </ul>
-            <a href="https://startling-daffodil-714b24.netlify.app/" class="pricing-button secondary" target="_blank">Get Started</a>
+            <button class="pricing-button secondary demo-cta-btn">Get Started</button>
           </div>
           <div class="pricing-card featured">
             <div class="pricing-badge">Most Popular</div>
@@ -319,7 +322,7 @@ document.querySelector('#app').innerHTML = `
               <li><i class="fas fa-check"></i> Export to multiple formats</li>
               <li><i class="fas fa-check"></i> Priority support</li>
             </ul>
-            <a href="https://startling-daffodil-714b24.netlify.app/" class="pricing-button primary" target="_blank">Start Free Trial</a>
+            <button class="pricing-button primary demo-cta-btn">Start Free Trial</button>
           </div>
           <div class="pricing-card">
             <div class="pricing-header">
@@ -338,7 +341,7 @@ document.querySelector('#app').innerHTML = `
               <li><i class="fas fa-check"></i> Dedicated support</li>
               <li><i class="fas fa-check"></i> SSO & security</li>
             </ul>
-            <a href="https://startling-daffodil-714b24.netlify.app/" class="pricing-button secondary" target="_blank">Contact Sales</a>
+            <button class="pricing-button secondary demo-cta-btn">Contact Sales</button>
           </div>
         </div>
       </div>
@@ -418,10 +421,10 @@ document.querySelector('#app').innerHTML = `
           <h2>Ready to Transform Your Note-Taking?</h2>
           <p>Join thousands of professionals who've already made the switch to voice-powered productivity.</p>
           <div class="cta-buttons">
-            <a href="https://startling-daffodil-714b24.netlify.app/" class="primary-button large" target="_blank">
+            <button class="primary-button large demo-cta-btn">
               <i class="fas fa-rocket"></i>
               Start Your Free Trial
-            </a>
+            </button>
             <div class="cta-note">
               <i class="fas fa-shield-alt"></i>
               <span>No credit card required • 14-day free trial</span>
@@ -447,7 +450,7 @@ document.querySelector('#app').innerHTML = `
               <h4>Product</h4>
               <a href="#features">Features</a>
               <a href="#pricing">Pricing</a>
-              <a href="https://startling-daffodil-714b24.netlify.app/" target="_blank">Demo</a>
+              <a href="#" class="demo-link">Demo</a>
             </div>
             <div class="footer-column">
               <h4>Support</h4>
@@ -512,46 +515,137 @@ function handleContactForm() {
     });
   }
 }
+// Initialize auth modal
+authModal = new AuthModal()
+
+// Function to handle demo access
+function handleDemoAccess() {
+  if (authManager.isAuthenticated()) {
+    window.open('https://startling-daffodil-714b24.netlify.app/', '_blank')
+  } else {
+    authModal.open('login')
+  }
+}
+
+// Function to update navigation based on auth state
+function updateNavigation(user) {
+  const navLinks = document.getElementById('navLinks')
+
+  if (user) {
+    const userEmail = user.email || ''
+    const userInitial = userEmail.charAt(0).toUpperCase()
+
+    navLinks.innerHTML = `
+      <a href="#features">Features</a>
+      <a href="#pricing">Pricing</a>
+      <a href="#contact">Contact</a>
+      <div class="user-menu">
+        <button class="user-menu-button" id="userMenuBtn">
+          <div class="user-avatar">${userInitial}</div>
+          <span>${userEmail.split('@')[0]}</span>
+          <i class="fas fa-chevron-down"></i>
+        </button>
+        <div class="user-dropdown" id="userDropdown">
+          <button class="user-dropdown-item demo-link">
+            <i class="fas fa-play"></i>
+            <span>Open Demo</span>
+          </button>
+          <button class="user-dropdown-item" id="logoutBtn">
+            <i class="fas fa-sign-out-alt"></i>
+            <span>Sign Out</span>
+          </button>
+        </div>
+      </div>
+    `
+
+    const userMenuBtn = document.getElementById('userMenuBtn')
+    const userDropdown = document.getElementById('userDropdown')
+    const logoutBtn = document.getElementById('logoutBtn')
+
+    userMenuBtn.addEventListener('click', (e) => {
+      e.stopPropagation()
+      userDropdown.classList.toggle('active')
+    })
+
+    document.addEventListener('click', () => {
+      userDropdown.classList.remove('active')
+    })
+
+    logoutBtn.addEventListener('click', async () => {
+      await authManager.signOut()
+    })
+
+    document.querySelectorAll('.demo-link').forEach(link => {
+      link.addEventListener('click', (e) => {
+        e.preventDefault()
+        handleDemoAccess()
+      })
+    })
+  } else {
+    navLinks.innerHTML = `
+      <a href="#features">Features</a>
+      <a href="#pricing">Pricing</a>
+      <a href="#contact">Contact</a>
+      <button class="cta-button" id="navLoginBtn">Sign In</button>
+    `
+
+    const navLoginBtn = document.getElementById('navLoginBtn')
+    if (navLoginBtn) {
+      navLoginBtn.addEventListener('click', () => authModal.open('login'))
+    }
+  }
+}
+
 // Add mobile menu toggle functionality
 document.addEventListener('DOMContentLoaded', function() {
   // Initialize contact form
   handleContactForm();
-  
+
   const mobileToggle = document.querySelector('.mobile-menu-toggle');
   const navLinks = document.querySelector('.nav-links');
-  
+
   if (mobileToggle && navLinks) {
     mobileToggle.addEventListener('click', function() {
       navLinks.classList.toggle('active');
     });
   }
   
+  // Setup auth state listener
+  authManager.onAuthStateChange((user) => {
+    updateNavigation(user)
+  })
+
+  // Initial navigation update
+  updateNavigation(authManager.getCurrentUser())
+
+  // Add click handlers for demo buttons
+  document.querySelectorAll('.demo-cta-btn, #heroDemoBtn').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.preventDefault()
+      handleDemoAccess()
+    })
+  })
+
+  // Add click handlers for demo links
+  document.querySelectorAll('.demo-link').forEach(link => {
+    link.addEventListener('click', (e) => {
+      e.preventDefault()
+      handleDemoAccess()
+    })
+  })
+
   // Add click handlers for all navigation links
-  const navLinksElements = document.querySelectorAll('.nav-links a[href^="#"]');
-  navLinksElements.forEach(link => {
-    link.addEventListener('click', function(e) {
-      e.preventDefault();
-      const targetId = this.getAttribute('href').substring(1);
-      scrollToSection(targetId);
-      
-      // Close mobile menu if open
+  document.addEventListener('click', (e) => {
+    if (e.target.matches('.nav-links a[href^="#"]')) {
+      e.preventDefault()
+      const targetId = e.target.getAttribute('href').substring(1)
+      scrollToSection(targetId)
+
       if (navLinks.classList.contains('active')) {
-        navLinks.classList.remove('active');
+        navLinks.classList.remove('active')
       }
-    });
-  });
-  
-  // Test all external links
-  const externalLinks = document.querySelectorAll('a[href^="https://startling-daffodil-714b24.netlify.app/"]');
-  console.log(`Found ${externalLinks.length} external links to VoiceNote Mentor app`);
-  
-  // Add click tracking for external links
-  externalLinks.forEach(link => {
-    link.addEventListener('click', function() {
-      console.log('External link clicked:', this.href);
-      // You can add analytics tracking here
-    });
-  });
+    }
+  })
 });
 
 // Global function for microphone test button
