@@ -575,12 +575,13 @@ function updateNavigation(user) {
       await authManager.signOut()
     })
 
-    document.querySelectorAll('.demo-link').forEach(link => {
-      link.addEventListener('click', (e) => {
+    const demoLink = navLinks.querySelector('.demo-link')
+    if (demoLink) {
+      demoLink.addEventListener('click', (e) => {
         e.preventDefault()
         handleDemoAccess()
       })
-    })
+    }
   } else {
     navLinks.innerHTML = `
       <a href="#features">Features</a>
