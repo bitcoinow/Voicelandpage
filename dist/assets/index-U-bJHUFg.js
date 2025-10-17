@@ -588,7 +588,7 @@ ${b}`}class T extends Error{constructor({message:e,code:t,cause:s,name:r}){var n
           </button>
         </div>
       </div>
-    `;const r=document.getElementById("userMenuBtn"),n=document.getElementById("userDropdown"),a=document.getElementById("logoutBtn");r.addEventListener("click",o=>{o.stopPropagation(),n.classList.toggle("active")}),document.addEventListener("click",()=>{n.classList.remove("active")}),a.addEventListener("click",async()=>{await oe.signOut()}),document.querySelectorAll(".demo-link").forEach(o=>{o.addEventListener("click",l=>{l.preventDefault(),Xe()})})}else{e.innerHTML=`
+    `;const r=document.getElementById("userMenuBtn"),n=document.getElementById("userDropdown"),a=document.getElementById("logoutBtn");r.addEventListener("click",l=>{l.stopPropagation(),n.classList.toggle("active")}),document.addEventListener("click",()=>{n.classList.remove("active")}),a.addEventListener("click",async()=>{await oe.signOut()});const o=e.querySelector(".demo-link");o&&o.addEventListener("click",l=>{l.preventDefault(),Xe()})}else{e.innerHTML=`
       <a href="#features">Features</a>
       <a href="#pricing">Pricing</a>
       <a href="#contact">Contact</a>
