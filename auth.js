@@ -8,16 +8,22 @@ class AuthManager {
   }
 
   async init() {
-    const { data: { session } } = await supabase.auth.getSession()
-    this.currentUser = session?.user || null
-    this.notifyListeners()
+    try {
+      const { data: { session } } = await supabase.auth.getSession()
+      this.currentUser = session?.user || null
+      this.notifyListeners()
 
-    supabase.auth.onAuthStateChange((_event, session) => {
-      (async () => {
-        this.currentUser = session?.user || null
-        this.notifyListeners()
-      })()
-    })
+      supabase.auth.onAuthStateChange((_event, session) => {
+        (async () => {
+          this.currentUser = session?.user || null
+          this.notifyListeners()
+        })()
+      })
+    } catch (error) {
+      console.error('Auth initialization error:', error)
+      this.currentUser = null
+      this.notifyListeners()
+    }
   }
 
   onAuthStateChange(callback) {

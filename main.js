@@ -515,21 +515,32 @@ function handleContactForm() {
     });
   }
 }
-// Initialize auth modal
-authModal = new AuthModal()
-
 // Function to handle demo access
 function handleDemoAccess() {
-  if (authManager.isAuthenticated()) {
+  try {
+    if (authManager.isAuthenticated()) {
+      window.open('https://startling-daffodil-714b24.netlify.app/', '_blank')
+    } else {
+      if (authModal) {
+        authModal.open('login')
+      } else {
+        console.error('Auth modal not initialized')
+      }
+    }
+  } catch (error) {
+    console.error('Error handling demo access:', error)
     window.open('https://startling-daffodil-714b24.netlify.app/', '_blank')
-  } else {
-    authModal.open('login')
   }
 }
 
 // Function to update navigation based on auth state
 function updateNavigation(user) {
   const navLinks = document.getElementById('navLinks')
+
+  if (!navLinks) {
+    console.error('Navigation links element not found')
+    return
+  }
 
   if (user) {
     const userEmail = user.email || ''
@@ -599,25 +610,32 @@ function updateNavigation(user) {
 
 // Add mobile menu toggle functionality
 document.addEventListener('DOMContentLoaded', function() {
-  // Initialize contact form
-  handleContactForm();
+  try {
+    // Initialize auth modal
+    authModal = new AuthModal()
 
-  const mobileToggle = document.querySelector('.mobile-menu-toggle');
-  const navLinks = document.querySelector('.nav-links');
+    // Initialize contact form
+    handleContactForm();
 
-  if (mobileToggle && navLinks) {
-    mobileToggle.addEventListener('click', function() {
-      navLinks.classList.toggle('active');
-    });
+    const mobileToggle = document.querySelector('.mobile-menu-toggle');
+    const navLinks = document.querySelector('.nav-links');
+
+    if (mobileToggle && navLinks) {
+      mobileToggle.addEventListener('click', function() {
+        navLinks.classList.toggle('active');
+      });
+    }
+
+    // Setup auth state listener
+    authManager.onAuthStateChange((user) => {
+      updateNavigation(user)
+    })
+
+    // Initial navigation update
+    updateNavigation(authManager.getCurrentUser())
+  } catch (error) {
+    console.error('Initialization error:', error)
   }
-  
-  // Setup auth state listener
-  authManager.onAuthStateChange((user) => {
-    updateNavigation(user)
-  })
-
-  // Initial navigation update
-  updateNavigation(authManager.getCurrentUser())
 
   // Add click handlers for demo buttons
   document.querySelectorAll('.demo-cta-btn, #heroDemoBtn').forEach(btn => {
