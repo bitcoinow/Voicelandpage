@@ -700,36 +700,58 @@ class MicrophoneTest {
     this.microphone = null;
     this.dataArray = null;
     this.animationId = null;
+    this.audioChunks = [];
+    this.recordedAudioUrl = null;
+    this.stream = null;
   }
 
   async startMicTest() {
     try {
       // Request microphone permission
-      const stream = await navigator.mediaDevices.getUserMedia({ 
+      this.stream = await navigator.mediaDevices.getUserMedia({
         audio: {
           echoCancellation: true,
           noiseSuppression: true,
           sampleRate: 44100
-        } 
+        }
       });
 
       // Create audio context for visualization
       this.audioContext = new (window.AudioContext || window.webkitAudioContext)();
       this.analyser = this.audioContext.createAnalyser();
-      this.microphone = this.audioContext.createMediaStreamSource(stream);
-      
+      this.microphone = this.audioContext.createMediaStreamSource(this.stream);
+
       this.analyser.fftSize = 256;
       const bufferLength = this.analyser.frequencyBinCount;
       this.dataArray = new Uint8Array(bufferLength);
-      
+
       this.microphone.connect(this.analyser);
-      
+
+      // Initialize MediaRecorder for actual recording
+      this.audioChunks = [];
+      this.mediaRecorder = new MediaRecorder(this.stream);
+
+      this.mediaRecorder.ondataavailable = (event) => {
+        if (event.data.size > 0) {
+          this.audioChunks.push(event.data);
+        }
+      };
+
+      this.mediaRecorder.onstop = () => {
+        const audioBlob = new Blob(this.audioChunks, { type: 'audio/webm' });
+        this.recordedAudioUrl = URL.createObjectURL(audioBlob);
+        this.showPlaybackControls();
+        console.log('Recording saved, ready for playback');
+      };
+
+      this.mediaRecorder.start();
+
       this.isRecording = true;
       this.updateMicTestUI();
       this.visualizeMicrophone();
-      
-      console.log('Microphone test started successfully');
-      
+
+      console.log('Microphone recording started successfully');
+
     } catch (error) {
       console.error('Error accessing microphone:', error);
       this.showMicError(error.message);
@@ -738,24 +760,29 @@ class MicrophoneTest {
 
   stopMicTest() {
     this.isRecording = false;
-    
+
     if (this.animationId) {
       cancelAnimationFrame(this.animationId);
     }
-    
+
+    // Stop MediaRecorder
+    if (this.mediaRecorder && this.mediaRecorder.state !== 'inactive') {
+      this.mediaRecorder.stop();
+    }
+
     if (this.audioContext) {
       this.audioContext.close();
     }
-    
+
     // Stop all tracks
-    if (this.microphone && this.microphone.mediaStream) {
-      this.microphone.mediaStream.getTracks().forEach(track => track.stop());
+    if (this.stream) {
+      this.stream.getTracks().forEach(track => track.stop());
     }
-    
+
     this.updateMicTestUI();
     this.resetVisualization();
-    
-    console.log('Microphone test stopped');
+
+    console.log('Microphone recording stopped');
   }
 
   visualizeMicrophone() {
@@ -848,6 +875,118 @@ class MicrophoneTest {
     if (statusText) {
       statusText.textContent = 'Click "Test Your Microphone" to begin';
       statusText.style.color = '#64748b';
+    }
+  }
+
+  showPlaybackControls() {
+    const statusText = document.querySelector('.mic-status-text');
+    if (statusText) {
+      statusText.innerHTML = `
+        <div style="display: flex; flex-direction: column; gap: 10px; align-items: center;">
+          <div style="color: #10b981;">Recording complete!</div>
+          <div style="display: flex; gap: 10px;">
+            <button class="playback-button" onclick="micTest.playRecording()" style="padding: 8px 16px; background: #3b82f6; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 14px;">
+              <i class="fas fa-play"></i> Play Recording
+            </button>
+            <button class="transcribe-button" onclick="micTest.transcribeAudio()" style="padding: 8px 16px; background: #10b981; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 14px;">
+              <i class="fas fa-file-alt"></i> Transcribe
+            </button>
+          </div>
+          <div class="transcription-result" style="margin-top: 10px; padding: 10px; background: #f1f5f9; border-radius: 6px; width: 100%; text-align: left; display: none;"></div>
+        </div>
+      `;
+    }
+  }
+
+  playRecording() {
+    if (this.recordedAudioUrl) {
+      const audio = new Audio(this.recordedAudioUrl);
+      audio.play();
+      console.log('Playing recorded audio');
+    } else {
+      console.error('No recording available to play');
+    }
+  }
+
+  async transcribeAudio() {
+    const transcriptionResult = document.querySelector('.transcription-result');
+    if (!transcriptionResult) return;
+
+    if (!this.recordedAudioUrl) {
+      transcriptionResult.style.display = 'block';
+      transcriptionResult.innerHTML = '<span style="color: #ef4444;">No recording available to transcribe</span>';
+      return;
+    }
+
+    transcriptionResult.style.display = 'block';
+    transcriptionResult.innerHTML = '<span style="color: #64748b;">Transcribing audio... <i class="fas fa-spinner fa-spin"></i></span>';
+
+    try {
+      // Get the audio blob
+      const response = await fetch(this.recordedAudioUrl);
+      const audioBlob = await response.blob();
+
+      // Use Web Speech API for transcription
+      if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
+        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+        const recognition = new SpeechRecognition();
+
+        recognition.continuous = false;
+        recognition.interimResults = false;
+        recognition.lang = 'en-US';
+
+        // For live transcription, we need to use the microphone directly
+        transcriptionResult.innerHTML = '<span style=\"color: #f59e0b;\">Starting live transcription... Please speak now</span>';
+
+        // Request microphone access for transcription
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+
+        recognition.onresult = (event) => {
+          const transcript = event.results[0][0].transcript;
+          const confidence = event.results[0][0].confidence;
+
+          transcriptionResult.innerHTML = `
+            <div style=\"color: #10b981; margin-bottom: 8px;\">Transcription successful!</div>
+            <div style=\"color: #1e293b; font-size: 14px;\"><strong>Text:</strong> ${transcript}</div>
+            <div style=\"color: #64748b; font-size: 12px; margin-top: 4px;\">Confidence: ${(confidence * 100).toFixed(1)}%</div>
+          `;
+
+          // Stop the stream
+          stream.getTracks().forEach(track => track.stop());
+        };
+
+        recognition.onerror = (event) => {
+          transcriptionResult.innerHTML = `<span style=\"color: #ef4444;\">Transcription error: ${event.error}</span>`;
+          stream.getTracks().forEach(track => track.stop());
+        };
+
+        recognition.onend = () => {
+          stream.getTracks().forEach(track => track.stop());
+        };
+
+        recognition.start();
+
+        // Auto-stop after 10 seconds
+        setTimeout(() => {
+          recognition.stop();
+        }, 10000);
+
+      } else {
+        transcriptionResult.innerHTML = `
+          <div style=\"color: #f59e0b;\">
+            <div style=\"margin-bottom: 8px;\">Browser Speech Recognition not available</div>
+            <div style=\"font-size: 12px;\">The recording has been saved successfully. To add cloud transcription, you would need to integrate with services like:</div>
+            <ul style=\"text-align: left; font-size: 12px; margin-top: 8px;\">
+              <li>Google Cloud Speech-to-Text API</li>
+              <li>OpenAI Whisper API</li>
+              <li>AssemblyAI</li>
+            </ul>
+          </div>
+        `;
+      }
+    } catch (error) {
+      console.error('Transcription error:', error);
+      transcriptionResult.innerHTML = `<span style=\"color: #ef4444;\">Transcription failed: ${error.message}</span>`;
     }
   }
 
